@@ -16,7 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.miletrack.app",
+      "package": "com.abhi.fueltrack",
       "adaptiveIcon": {
         "backgroundColor": "#0F1512",
         "foregroundImage": "./assets/android-icon-foreground.png",
