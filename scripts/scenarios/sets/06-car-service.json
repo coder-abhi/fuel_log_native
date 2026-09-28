@@ -1,0 +1,51 @@
+{
+  "name": "Car Service",
+  "description": "A thirsty pre-service stretch followed by a more efficient post-service stretch — since-last-service mileage should diverge from lifetime.",
+  "vehicle": {
+    "type": "car",
+    "tankCapacityLitres": 50,
+    "reserveThresholdLitres": 5
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-06-01T08:00:00.000Z",
+      "odometerKm": 6000,
+      "litresFilled": 50,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-06-10T08:00:00.000Z",
+      "odometerKm": 6500,
+      "litresFilled": 50,
+      "isFullTank": true
+    },
+    {
+      "type": "service",
+      "at": "2025-06-12T08:00:00.000Z",
+      "odometerKm": 6520,
+      "notes": "Full service",
+      "cost": 1200
+    },
+    {
+      "type": "fuel",
+      "at": "2025-06-20T08:00:00.000Z",
+      "odometerKm": 7300,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-06-30T08:00:00.000Z",
+      "odometerKm": 8100,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-07-02T08:00:00.000Z",
+      "odometerKm": 8150
+    }
+  ]
+}

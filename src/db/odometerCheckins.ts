@@ -9,6 +9,7 @@ interface CheckinRow {
   checked_at: string;
   created_at: string;
   notes: string | null;
+  fuel_percent: number | null;
 }
 
 const mapRow = (r: CheckinRow): OdometerCheckin => ({
@@ -18,6 +19,7 @@ const mapRow = (r: CheckinRow): OdometerCheckin => ({
   checkedAt: r.checked_at,
   createdAt: r.created_at,
   notes: r.notes,
+  fuelPercent: r.fuel_percent,
 });
 
 export interface CheckinInput {
@@ -25,6 +27,7 @@ export interface CheckinInput {
   odometerKm: number;
   checkedAt: string;
   notes: string | null;
+  fuelPercent: number | null;
 }
 
 export async function listCheckins(vehicleId: number): Promise<OdometerCheckin[]> {
@@ -36,12 +39,21 @@ export async function listCheckins(vehicleId: number): Promise<OdometerCheckin[]
   return rows.map(mapRow);
 }
 
+/** Every odometer check-in across every vehicle, for full-data backup/export. */
+export async function listAllCheckins(): Promise<OdometerCheckin[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<CheckinRow>(
+    'SELECT * FROM odometer_checkins ORDER BY vehicle_id ASC, checked_at ASC, id ASC;',
+  );
+  return rows.map(mapRow);
+}
+
 export async function createCheckin(input: CheckinInput): Promise<number> {
   const db = await getDb();
   const res = await db.runAsync(
-    `INSERT INTO odometer_checkins (vehicle_id, odometer_km, checked_at, created_at, notes)
-     VALUES (?, ?, ?, ?, ?);`,
-    [input.vehicleId, input.odometerKm, input.checkedAt, nowIso(), input.notes],
+    `INSERT INTO odometer_checkins (vehicle_id, odometer_km, checked_at, created_at, notes, fuel_percent)
+     VALUES (?, ?, ?, ?, ?, ?);`,
+    [input.vehicleId, input.odometerKm, input.checkedAt, nowIso(), input.notes, input.fuelPercent],
   );
   return res.lastInsertRowId;
 }
@@ -49,8 +61,8 @@ export async function createCheckin(input: CheckinInput): Promise<number> {
 export async function updateCheckin(id: number, input: CheckinInput): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'UPDATE odometer_checkins SET odometer_km = ?, checked_at = ?, notes = ? WHERE id = ?;',
-    [input.odometerKm, input.checkedAt, input.notes, id],
+    'UPDATE odometer_checkins SET odometer_km = ?, checked_at = ?, notes = ?, fuel_percent = ? WHERE id = ?;',
+    [input.odometerKm, input.checkedAt, input.notes, input.fuelPercent, id],
   );
 }
 

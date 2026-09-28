@@ -7,12 +7,15 @@
 import { useMemo } from 'react';
 
 import {
+  currentOdometer,
   drivingPatternStats,
   estimateRemainingFuel,
   lifetimeMileage,
+  lifetimeMileageFuelBalance,
   mileageTrendPoints,
   serviceIntervalBuckets,
   sinceLastServiceMileage,
+  sinceLastServiceMileageFuelBalance,
   type DrivingPatternStats,
   type MileageResult,
   type RemainingFuelResult,
@@ -43,33 +46,29 @@ export function useVehicleStats(): VehicleStats {
   const services = useAppStore((s) => s.services);
 
   return useMemo<VehicleStats>(() => {
-    const lifetime = lifetimeMileage(fuelEntries);
-    const sinceService = sinceLastServiceMileage(fuelEntries, services);
     const fuel = vehicle
       ? estimateRemainingFuel({ vehicle, fuelEntries, odometerCheckins: checkins, services })
       : null;
 
-    let lastKnownOdometer: number | null = null;
-    let lastKnownOdometerAt: string | null = null;
-    let lastAt = -Infinity;
-    let totalLitresFilled = 0;
-    for (const f of fuelEntries) {
-      totalLitresFilled += f.litresFilled ?? 0;
-      const t = Date.parse(f.filledAt);
-      if (t >= lastAt) {
-        lastAt = t;
-        lastKnownOdometer = f.odometerKm;
-        lastKnownOdometerAt = f.filledAt;
-      }
-    }
-    for (const c of checkins) {
-      const t = Date.parse(c.checkedAt);
-      if (t >= lastAt) {
-        lastAt = t;
-        lastKnownOdometer = c.odometerKm;
-        lastKnownOdometerAt = c.checkedAt;
-      }
-    }
+    // Fuel-balance model (see src/calc/fuelBalance.ts): walks the whole fuel
+    // history as full-tank-to-full-tank segments (every litre added in
+    // between is exactly what was consumed), closing the still-open final
+    // stretch with the same estimated-remaining-fuel figure as the Range
+    // card. Needs a vehicle (tank capacity) to do the math; falls back to the
+    // older fill-to-fill model on the rare render with no vehicle selected.
+    const lifetime = vehicle
+      ? lifetimeMileageFuelBalance(fuelEntries, vehicle, checkins, services)
+      : lifetimeMileage(fuelEntries);
+    const sinceService = vehicle
+      ? sinceLastServiceMileageFuelBalance(fuelEntries, vehicle, checkins, services)
+      : sinceLastServiceMileage(fuelEntries, services);
+
+    // Same "latest reading across both timelines" logic estimateRemainingFuel
+    // itself anchors on — reused here (rather than reimplemented) so the
+    // "current odometer" shown in the UI can never drift from what the fuel
+    // estimate is actually built on.
+    const current = currentOdometer(fuelEntries, checkins);
+    const totalLitresFilled = fuelEntries.reduce((sum, f) => sum + (f.litresFilled ?? 0), 0);
 
     return {
       hasData: fuelEntries.length > 0 || checkins.length > 0,
@@ -79,8 +78,8 @@ export function useVehicleStats(): VehicleStats {
       buckets: serviceIntervalBuckets(fuelEntries, services),
       trend: mileageTrendPoints(fuelEntries),
       driving: drivingPatternStats({ fuelEntries, odometerCheckins: checkins }),
-      lastKnownOdometer,
-      lastKnownOdometerAt,
+      lastKnownOdometer: current?.odometerKm ?? null,
+      lastKnownOdometerAt: current?.at ?? null,
       totalLitresFilled,
     };
   }, [vehicle, fuelEntries, checkins, services]);

@@ -1,0 +1,38 @@
+{
+  "name": "Bike Approx",
+  "description": "Same missed-fill situation as scenario 3, but this time the user gives a rough litres estimate instead of leaving it blank — the interval stays in the mileage math.",
+  "vehicle": {
+    "type": "bike",
+    "tankCapacityLitres": 15,
+    "reserveThresholdLitres": 2
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-04-01T08:00:00.000Z",
+      "odometerKm": 4000,
+      "litresFilled": 35,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-04-15T08:00:00.000Z",
+      "odometerKm": 4600,
+      "litresFilled": 25,
+      "isApproximate": true,
+      "isFullTank": false
+    },
+    {
+      "type": "fuel",
+      "at": "2025-04-20T08:00:00.000Z",
+      "odometerKm": 4900,
+      "litresFilled": 15,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-04-22T08:00:00.000Z",
+      "odometerKm": 4950
+    }
+  ]
+}

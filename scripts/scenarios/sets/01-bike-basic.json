@@ -1,0 +1,45 @@
+{
+  "name": "Bike Basic",
+  "description": "Four consecutive full-tank fills — the simplest case, mileage should read cleanly.",
+  "vehicle": {
+    "type": "bike",
+    "tankCapacityLitres": 40,
+    "reserveThresholdLitres": 4
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-01-01T08:00:00.000Z",
+      "odometerKm": 0,
+      "litresFilled": 30,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-01-08T08:00:00.000Z",
+      "odometerKm": 400,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-01-15T08:00:00.000Z",
+      "odometerKm": 800,
+      "litresFilled": 38,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-01-22T08:00:00.000Z",
+      "odometerKm": 1150,
+      "litresFilled": 35,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-01-25T08:00:00.000Z",
+      "odometerKm": 1200,
+      "fuelPercent": 60
+    }
+  ]
+}

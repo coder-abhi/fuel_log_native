@@ -1,0 +1,23 @@
+{
+  "name": "Scooty Start",
+  "description": "Only one fill logged so far (no real mileage computable yet) — the remaining-fuel estimate should fall back to the rough per-type average.",
+  "vehicle": {
+    "type": "scooty",
+    "tankCapacityLitres": 5,
+    "reserveThresholdLitres": 1
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-11-01T08:00:00.000Z",
+      "odometerKm": 12000,
+      "litresFilled": 5,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-11-03T08:00:00.000Z",
+      "odometerKm": 12040
+    }
+  ]
+}

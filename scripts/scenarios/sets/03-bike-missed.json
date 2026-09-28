@@ -1,0 +1,36 @@
+{
+  "name": "Bike Missed",
+  "description": "A big unexplained odometer jump gets logged as 'missed fill, no estimate' — that interval is excluded, and the next one falls back to using its own litres since the marker has none to shift forward.",
+  "vehicle": {
+    "type": "bike",
+    "tankCapacityLitres": 15,
+    "reserveThresholdLitres": 2
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-03-01T08:00:00.000Z",
+      "odometerKm": 2000,
+      "litresFilled": 35,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-03-20T08:00:00.000Z",
+      "odometerKm": 2900,
+      "missedNoEstimate": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-03-25T08:00:00.000Z",
+      "odometerKm": 3100,
+      "litresFilled": 18,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-03-28T08:00:00.000Z",
+      "odometerKm": 3150
+    }
+  ]
+}

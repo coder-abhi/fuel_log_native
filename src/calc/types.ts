@@ -23,7 +23,10 @@ export interface Vehicle {
 export interface FuelEntry {
   id: number;
   vehicleId: number;
-  odometerKm: number;
+  /** optional-but-recommended: null when the user skipped logging it. An entry
+   *  with no odometer reading contributes to cost/litres totals but not to any
+   *  distance-based calculation (mileage, driving pattern, remaining fuel). */
+  odometerKm: number | null;
   /** null only when the entry is an excluded / "not sure" missed-fill marker. */
   litresFilled: number | null;
   isFullTank: boolean;
@@ -45,6 +48,9 @@ export interface OdometerCheckin {
   checkedAt: string;
   createdAt: string;
   notes: string | null;
+  /** approximate tank fill level at the time of this reading (0-100), or null
+   *  when the user left the fuel-level slider disabled for this check-in. */
+  fuelPercent: number | null;
 }
 
 export interface ServiceRecord {

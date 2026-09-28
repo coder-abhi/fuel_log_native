@@ -1,0 +1,37 @@
+{
+  "name": "Bike NoOdo",
+  "description": "Odometer is optional-but-recommended — a fill logged without one still counts toward litres/cost totals but drops out of the mileage chain entirely.",
+  "vehicle": {
+    "type": "bike",
+    "tankCapacityLitres": 15,
+    "reserveThresholdLitres": 2
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-09-01T08:00:00.000Z",
+      "odometerKm": 10000,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-09-05T08:00:00.000Z",
+      "litresFilled": 5,
+      "isFullTank": false,
+      "notes": "Topped up at night, couldn't read the odometer"
+    },
+    {
+      "type": "fuel",
+      "at": "2025-09-10T08:00:00.000Z",
+      "odometerKm": 10300,
+      "litresFilled": 32,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-09-12T08:00:00.000Z",
+      "odometerKm": 10350
+    }
+  ]
+}

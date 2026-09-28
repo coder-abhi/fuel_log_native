@@ -1,0 +1,44 @@
+{
+  "name": "Car Partial",
+  "description": "Two small top-ups sandwiched between full-tank fills — checks that litres attribute to the EARLIER fill of each interval, not the one just added.",
+  "vehicle": {
+    "type": "car",
+    "tankCapacityLitres": 45,
+    "reserveThresholdLitres": 5
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-02-01T08:00:00.000Z",
+      "odometerKm": 1000,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-02-05T08:00:00.000Z",
+      "odometerKm": 1150,
+      "litresFilled": 6,
+      "isFullTank": false
+    },
+    {
+      "type": "fuel",
+      "at": "2025-02-09T08:00:00.000Z",
+      "odometerKm": 1300,
+      "litresFilled": 6,
+      "isFullTank": false
+    },
+    {
+      "type": "fuel",
+      "at": "2025-02-14T08:00:00.000Z",
+      "odometerKm": 1500,
+      "litresFilled": 15,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-02-16T08:00:00.000Z",
+      "odometerKm": 1550
+    }
+  ]
+}

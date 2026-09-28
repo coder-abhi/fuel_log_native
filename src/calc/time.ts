@@ -54,6 +54,11 @@ export function endOfMonth(d: Date): Date {
   return x;
 }
 
+/** Local midnight for the day an ISO timestamp falls on, as a comparable number. */
+export function dayStart(iso: string): number {
+  return startOfDay(new Date(iso)).getTime();
+}
+
 export function isSameLocalDay(a: Date, b: Date): boolean {
   return (
     a.getFullYear() === b.getFullYear() &&

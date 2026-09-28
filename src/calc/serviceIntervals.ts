@@ -10,11 +10,14 @@
  * With no service records there is a single ongoing bucket covering all history.
  *
  * Each interval is assigned to a bucket by its END timestamp (later entry's
- * filledAt): interval belongs to bucket i when
- *   boundaryStart < endAt <= boundaryEnd
- * (the ongoing bucket has an open upper bound).
+ * filledAt), compared at calendar-day granularity:
+ *   boundaryStart <= endAt < boundaryEnd
+ * (the ongoing bucket has an open upper bound). A fill logged on the SAME DAY
+ * as a service counts as being in the bucket that opens with that service —
+ * the service is assumed to have happened first, then the tank got filled.
  */
 
+import { dayStart } from './time';
 import { buildIntervals, mileageFromIntervals } from './mileage';
 import type { FuelEntry, ServiceRecord } from './types';
 
@@ -45,8 +48,8 @@ export function serviceIntervalBuckets(
   const svc = sortedServices(services);
   const intervals = buildIntervals(entries);
 
-  // Boundary timestamps: [-inf, s0, s1, ..., s(n-1), +inf]
-  const bounds: (number | null)[] = [null, ...svc.map((s) => Date.parse(s.servicedAt)), null];
+  // Boundary days: [-inf, day(s0), day(s1), ..., day(s(n-1)), +inf]
+  const bounds: (number | null)[] = [null, ...svc.map((s) => dayStart(s.servicedAt)), null];
   const buckets: ServiceIntervalBucket[] = [];
 
   for (let i = 0; i < bounds.length - 1; i++) {
@@ -55,9 +58,9 @@ export function serviceIntervalBuckets(
     const ongoing = hi === null;
 
     const inBucket = intervals.filter((iv) => {
-      const t = Date.parse(iv.endAt);
-      const afterLo = lo === null ? true : t > lo;
-      const beforeHi = hi === null ? true : t <= hi;
+      const t = dayStart(iv.endAt);
+      const afterLo = lo === null ? true : t >= lo;
+      const beforeHi = hi === null ? true : t < hi;
       return afterLo && beforeHi;
     });
 

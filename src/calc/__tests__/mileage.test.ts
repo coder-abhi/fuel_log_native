@@ -4,7 +4,7 @@ import {
   sinceLastServiceMileage,
   sortFuelEntries,
 } from '../mileage';
-import { fuel, service, resetIds } from './helpers';
+import { fuel, service, resetIds, localIso } from './helpers';
 
 beforeEach(resetIds);
 
@@ -36,10 +36,12 @@ describe('lifetimeMileage — normal full-tank sequence', () => {
       fuel({ odometerKm: 1150, litresFilled: 35, isFullTank: true, filledAt: '2025-01-22T00:00:00.000Z' }),
     ];
     const r = lifetimeMileage(entries);
-    // first entry's litres never count (no interval ends there)
+    // litres are attributed to the EARLIER fill of each interval (the fuel
+    // that was actually in the tank for that stretch) — the last entry's
+    // litres never count (no interval starts there yet).
     expect(r.totalKm).toBe(1150);
-    expect(r.totalLitres).toBe(40 + 38 + 35);
-    expect(r.kmPerLitre).toBeCloseTo(1150 / 113, 6);
+    expect(r.totalLitres).toBe(30 + 40 + 38);
+    expect(r.kmPerLitre).toBeCloseTo(1150 / 108, 6);
     expect(r.countedIntervals).toBe(3);
   });
 });
@@ -53,8 +55,8 @@ describe('lifetimeMileage — partial-only sequence', () => {
     ];
     const r = lifetimeMileage(entries);
     expect(r.totalKm).toBe(400);
-    expect(r.totalLitres).toBe(8.5);
-    expect(r.kmPerLitre).toBeCloseTo(400 / 8.5, 6);
+    expect(r.totalLitres).toBe(9);
+    expect(r.kmPerLitre).toBeCloseTo(400 / 9, 6);
   });
 });
 
@@ -91,10 +93,69 @@ describe('lifetimeMileage — excluded intervals', () => {
       fuel({ odometerKm: 1100, litresFilled: 12, filledAt: '2025-04-15T00:00:00.000Z' }),
     ];
     const r = lifetimeMileage(entries);
-    // only the last interval (900 -> 1100, 12L) counts
+    // interval 1 (0 -> 900) is excluded because its LATER entry is flagged.
+    // interval 2 (900 -> 1100) would normally attribute litres to its earlier
+    // entry (900), but that entry's litres are unknown (null) — the missed-fill
+    // marker acts like a reset point, so this interval falls back to using the
+    // litres of its OWN later entry (1100's 12L) instead.
     expect(r.totalKm).toBe(200);
     expect(r.totalLitres).toBe(12);
     expect(r.countedIntervals).toBe(1);
+  });
+});
+
+describe('buildIntervals — litres attribution shift', () => {
+  it("attributes an interval's litres to the EARLIER fill, not the later one", () => {
+    // Filling 10L to reach 830km should not count as fuel used to GET to
+    // 830km — that fuel is only used going forward from here.
+    const entries = [
+      fuel({ odometerKm: 800, litresFilled: 8, filledAt: '2025-06-01T00:00:00.000Z' }),
+      fuel({ odometerKm: 830, litresFilled: 10, filledAt: '2025-06-05T00:00:00.000Z' }),
+    ];
+    const ivs = buildIntervals(entries);
+    expect(ivs).toHaveLength(1);
+    expect(ivs[0].deltaKm).toBe(30);
+    expect(ivs[0].deltaLitres).toBe(8); // the 800km fill's litres, not the 10L just added
+  });
+
+  it('the most recent fill\'s litres are not counted until a future entry closes the interval', () => {
+    const entries = [
+      fuel({ odometerKm: 800, litresFilled: 8, filledAt: '2025-06-01T00:00:00.000Z' }),
+      fuel({ odometerKm: 830, litresFilled: 10, filledAt: '2025-06-05T00:00:00.000Z' }),
+    ];
+    expect(lifetimeMileage(entries).totalLitres).toBe(8);
+    const withNext = [...entries, fuel({ odometerKm: 850, litresFilled: 5, filledAt: '2025-06-10T00:00:00.000Z' })];
+    // now the 830km entry's 10L closes the second interval
+    expect(lifetimeMileage(withNext).totalLitres).toBe(8 + 10);
+  });
+});
+
+describe('buildIntervals — entries without an odometer reading', () => {
+  it('are skipped entirely when walking the mileage chain', () => {
+    const entries = [
+      fuel({ odometerKm: 0, litresFilled: 10, filledAt: '2025-07-01T00:00:00.000Z' }),
+      // logged without checking the odometer — optional, but not usable here
+      fuel({ odometerKm: null, litresFilled: 5, filledAt: '2025-07-05T00:00:00.000Z' }),
+      fuel({ odometerKm: 300, litresFilled: 20, filledAt: '2025-07-10T00:00:00.000Z' }),
+    ];
+    const ivs = buildIntervals(entries);
+    expect(ivs).toHaveLength(1);
+    expect(ivs[0].fromEntryId).toBe(entries[0].id);
+    expect(ivs[0].toEntryId).toBe(entries[2].id);
+    expect(ivs[0].deltaKm).toBe(300);
+    expect(ivs[0].deltaLitres).toBe(10);
+  });
+});
+
+describe('buildIntervals — defensive no-litres-data', () => {
+  it('excludes an interval that ends up with nothing to attribute', () => {
+    const entries = [
+      fuel({ odometerKm: 0, litresFilled: null, filledAt: '2025-08-01T00:00:00.000Z' }),
+      fuel({ odometerKm: 200, litresFilled: null, filledAt: '2025-08-05T00:00:00.000Z' }),
+    ];
+    const ivs = buildIntervals(entries);
+    expect(ivs[0].excluded).toBe(true);
+    expect(ivs[0].excludedReason).toBe('no-litres-data');
   });
 });
 
@@ -110,7 +171,8 @@ describe('buildIntervals — defensive non-positive distance', () => {
     expect(ivs[0].excludedReason).toBe('non-positive-distance');
     const r = lifetimeMileage(entries);
     expect(r.totalKm).toBe(420);
-    expect(r.totalLitres).toBe(20);
+    // litres come from the earlier fill of the surviving interval (480 -> 900)
+    expect(r.totalLitres).toBe(10);
   });
 });
 
@@ -150,5 +212,17 @@ describe('sinceLastServiceMileage', () => {
   it('is null when the last service is after every fuel interval', () => {
     const services = [service({ servicedAt: '2025-06-01T00:00:00.000Z' })];
     expect(sinceLastServiceMileage(entries, services).kmPerLitre).toBeNull();
+  });
+
+  it('counts a fill logged on the SAME DAY as the service (service assumed first)', () => {
+    const sameDayEntries = [
+      fuel({ odometerKm: 0, litresFilled: 10, filledAt: localIso(2025, 7, 1, 0) }),
+      // filled later in the day, after the service that morning
+      fuel({ odometerKm: 300, litresFilled: 15, filledAt: localIso(2025, 7, 10, 20) }),
+    ];
+    const services = [service({ servicedAt: localIso(2025, 7, 10, 8) })];
+    const r = sinceLastServiceMileage(sameDayEntries, services);
+    expect(r.totalKm).toBe(300);
+    expect(r.totalLitres).toBe(10);
   });
 });

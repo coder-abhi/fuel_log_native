@@ -17,6 +17,7 @@
     "**/__tests__/**",
     "**/*.test.ts",
     "jest.config.js",
-    "babel.config.js"
+    "babel.config.js",
+    "scripts"
   ]
 }

@@ -1,5 +1,6 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityRow } from '@/components/ActivityRow';
 import { ServiceIntervalChart } from '@/components/charts/ServiceIntervalChart';
@@ -56,6 +57,19 @@ export default function DashboardScreen() {
 
       <View style={styles.statRow}>
         <StatCard
+          label="Current odometer"
+          value={fmtKm(stats.lastKnownOdometer)}
+          unit="km"
+          icon={
+            <Pressable onPress={sheets.logOdometer} hitSlop={10}>
+              <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.textSecondary} />
+            </Pressable>
+          }
+        />
+      </View>
+
+      <View style={styles.statRow}>
+        <StatCard
           label="Fuel left"
           value={fuel?.canEstimate ? fmtLitres(fuel.remainingLitres, 1) : '—'}
           unit="L"
@@ -67,21 +81,6 @@ export default function DashboardScreen() {
           label="Range"
           value={fuel?.canEstimate ? fmtKm(fuel.estimatedRangeKm) : '—'}
           unit="km"
-        />
-        <StatCard label="This month" value={fmtKm(stats.driving.kmThisMonth)} unit="km" />
-      </View>
-
-      <View style={styles.statRow}>
-        <StatCard
-          label="Odometer"
-          value={fmtKm(stats.lastKnownOdometer)}
-          unit="km"
-        />
-        <StatCard
-          label="Fuel filled"
-          value={stats.totalLitresFilled > 0 ? fmtLitres(stats.totalLitresFilled, 1) : '—'}
-          unit="L"
-          hint="Logged to date"
         />
       </View>
 

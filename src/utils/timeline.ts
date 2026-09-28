@@ -1,7 +1,7 @@
 import type { FuelEntry, OdometerCheckin, ServiceRecord } from '@/calc';
 
 export type TimelineItem =
-  | { kind: 'fuel'; at: string; odometerKm: number; data: FuelEntry }
+  | { kind: 'fuel'; at: string; odometerKm: number | null; data: FuelEntry }
   | { kind: 'odometer'; at: string; odometerKm: number; data: OdometerCheckin }
   | { kind: 'service'; at: string; odometerKm: number | null; data: ServiceRecord };
 

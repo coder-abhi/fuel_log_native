@@ -1,0 +1,38 @@
+{
+  "name": "Bike Backdate",
+  "description": "Events are logged (and get their ids) in a different order than their dates — a fill remembered later and entered after the fact. The calc engine always sorts by timestamp, not entry order.",
+  "vehicle": {
+    "type": "bike",
+    "tankCapacityLitres": 15,
+    "reserveThresholdLitres": 2
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-08-01T08:00:00.000Z",
+      "odometerKm": 9000,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-08-15T08:00:00.000Z",
+      "odometerKm": 9600,
+      "litresFilled": 35,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-08-08T08:00:00.000Z",
+      "odometerKm": 9300,
+      "litresFilled": 20,
+      "isFullTank": true,
+      "notes": "Logged after the fact — actually happened between the two fills above"
+    },
+    {
+      "type": "odometer",
+      "at": "2025-08-18T08:00:00.000Z",
+      "odometerKm": 9650
+    }
+  ]
+}

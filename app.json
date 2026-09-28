@@ -2,13 +2,13 @@
   "expo": {
     "name": "MileTrack",
     "slug": "miletrack",
+    "owner": "coder-abhi",
     "version": "1.0.0",
     "scheme": "miletrack",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0F1512",
-    "newArchEnabled": true,
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -32,7 +32,14 @@
       "expo-router",
       "expo-sqlite",
       "@react-native-community/datetimepicker",
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-sharing"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "04b0f7bc-a05e-49bb-bd20-2a30427cb648"
+      }
+    }
   }
 }

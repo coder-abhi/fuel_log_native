@@ -77,8 +77,9 @@ describe('estimateRemainingFuel', () => {
   });
 
   it('estimates remaining litres and range from the last full tank', () => {
-    // Build a since-last-service mileage of 20 km/l:
-    //   full tank @0km, then fill @1000km with 50L  -> 1000km / 50L = 20 km/l
+    // Build a since-last-service mileage of 25 km/l:
+    //   full tank @0km with 40L, then fill @1000km -> the 0km fill's 40L
+    //   explains the 1000km covered to get here -> 1000km / 40L = 25 km/l
     const v = vehicle({ tankCapacityLitres: 40, reserveThresholdLitres: 4 });
     const fuelEntries = [
       fuel({ odometerKm: 0, litresFilled: 40, isFullTank: true, filledAt: '2025-01-01T00:00:00.000Z' }),
@@ -90,12 +91,12 @@ describe('estimateRemainingFuel', () => {
     ];
     const r = estimateRemainingFuel({ vehicle: v, fuelEntries, odometerCheckins, services: [] });
     // baseline = full tank @1000km (the most recent). kmSinceFull = 100.
-    // mileage = 20 km/l -> consumed = 5 L. no partial fills after baseline.
-    // estimatedFuel = 40 - 5 + 0 = 35
+    // mileage = 25 km/l -> consumed = 4 L. no partial fills after baseline.
+    // estimatedFuel = 40 - 4 + 0 = 36
     expect(r.canEstimate).toBe(true);
-    expect(r.mileageUsed).toBeCloseTo(20, 6);
-    expect(r.remainingLitres).toBeCloseTo(35, 6);
-    expect(r.estimatedRangeKm).toBeCloseTo(700, 6);
+    expect(r.mileageUsed).toBeCloseTo(25, 6);
+    expect(r.remainingLitres).toBeCloseTo(36, 6);
+    expect(r.estimatedRangeKm).toBeCloseTo(900, 6);
     expect(r.atOrBelowReserve).toBe(false);
   });
 
@@ -103,7 +104,7 @@ describe('estimateRemainingFuel', () => {
     const v = vehicle({ tankCapacityLitres: 40 });
     const fuelEntries = [
       fuel({ odometerKm: 0, litresFilled: 40, isFullTank: true, filledAt: '2025-01-01T00:00:00.000Z' }),
-      fuel({ odometerKm: 1000, litresFilled: 50, isFullTank: true, filledAt: '2025-02-01T00:00:00.000Z' }), // sets 20km/l
+      fuel({ odometerKm: 1000, litresFilled: 50, isFullTank: true, filledAt: '2025-02-01T00:00:00.000Z' }),
       fuel({ odometerKm: 1200, litresFilled: 6, isFullTank: false, filledAt: '2025-02-04T00:00:00.000Z' }), // partial after baseline
     ];
     const r = estimateRemainingFuel({
@@ -112,10 +113,12 @@ describe('estimateRemainingFuel', () => {
       odometerCheckins: [checkin({ odometerKm: 1300, checkedAt: '2025-02-05T00:00:00.000Z' })],
       services: [],
     });
-    // lifetime mileage here = 1200 km / 56 L (the 6 L partial is in the sums too).
-    // baseline = @1000km full tank. kmSinceFull = 300 -> consumed 300 * 56/1200 = 14 L.
-    // partial 6 L added after baseline. estimatedFuel = 40 - 14 + 6 = 32
-    expect(r.remainingLitres).toBeCloseTo(32, 6);
+    // lifetime mileage here = 1200 km / 90 L (0km fill's 40L covers 0->1000,
+    // 1000km fill's 50L covers 1000->1200; the 1200km entry's own 6L isn't
+    // counted yet — nothing closes that interval).
+    // baseline = @1000km full tank. kmSinceFull = 300 -> consumed 300 * 90/1200 = 22.5 L.
+    // partial 6 L added after baseline. estimatedFuel = 40 - 22.5 + 6 = 23.5
+    expect(r.remainingLitres).toBeCloseTo(23.5, 6);
   });
 
   it('clamps remaining litres into [0, tankCapacity]', () => {
@@ -169,9 +172,61 @@ describe('estimateRemainingFuel', () => {
       odometerCheckins: [checkin({ odometerKm: 1750, checkedAt: '2025-04-05T00:00:00.000Z' })],
       services,
     });
-    // since-last-service mileage = 1000km / 40L = 25 km/l
-    expect(r.mileageUsed).toBeCloseTo(25, 6);
-    // baseline full tank @1500km, kmSinceFull 250 => 10 L consumed => 40 L left
-    expect(r.remainingLitres).toBeCloseTo(40, 6);
+    // since-last-service mileage: only interval 500->1500 qualifies, and its
+    // litres come from the earlier (500km) fill: 1000km / 50L = 20 km/l
+    expect(r.mileageUsed).toBeCloseTo(20, 6);
+    // baseline full tank @1500km, kmSinceFull 250 => 12.5 L consumed => 37.5 L left
+    expect(r.remainingLitres).toBeCloseTo(37.5, 6);
+  });
+
+  describe('reconciling a fuel-level check-in against the calculated figure', () => {
+    it('splits the difference and re-derives the mileage used for range', () => {
+      const v = vehicle({ tankCapacityLitres: 10, reserveThresholdLitres: 1 });
+      const fuelEntries = [
+        fuel({ odometerKm: 0, litresFilled: 5, isFullTank: true, filledAt: '2025-01-01T00:00:00.000Z' }),
+        fuel({ odometerKm: 100, litresFilled: 5, isFullTank: true, filledAt: '2025-01-08T00:00:00.000Z' }),
+      ];
+      // calc says: mileage 100km/5L = 20 km/l, 50km since full @20km/l => 2.5L
+      // consumed => 7.5L left. But the user glanced at the gauge and guessed
+      // only 10% (1L) remains — a big contradiction.
+      const r = estimateRemainingFuel({
+        vehicle: v,
+        fuelEntries,
+        odometerCheckins: [
+          checkin({ odometerKm: 150, checkedAt: '2025-01-10T00:00:00.000Z', fuelPercent: 10 }),
+        ],
+        services: [],
+      });
+      // (7.5 calc + 1 observed) / 2 = 4.25L
+      expect(r.remainingLitres).toBeCloseTo(4.25, 6);
+      // implied consumption since full: 10 - 4.25 = 5.75L over 50km => ~8.70 km/l,
+      // well below the raw 20 km/l — the reconciliation makes mileage WORSE,
+      // consistent with believing more fuel was actually burned.
+      expect(r.mileageUsed).toBeCloseTo(50 / 5.75, 6);
+      expect(r.mileageUsed!).toBeLessThan(20);
+      expect(r.estimatedRangeKm).toBeCloseTo(4.25 * (50 / 5.75), 6);
+    });
+
+    it('ignores a fuel-level guess that is no longer the current reading', () => {
+      const v = vehicle({ tankCapacityLitres: 10, reserveThresholdLitres: 1 });
+      const fuelEntries = [
+        fuel({ odometerKm: 0, litresFilled: 5, isFullTank: true, filledAt: '2025-01-01T00:00:00.000Z' }),
+        fuel({ odometerKm: 100, litresFilled: 5, isFullTank: true, filledAt: '2025-01-08T00:00:00.000Z' }),
+      ];
+      const r = estimateRemainingFuel({
+        vehicle: v,
+        fuelEntries,
+        odometerCheckins: [
+          // a stale fuel-level guess, superseded by a later plain check-in
+          checkin({ odometerKm: 120, checkedAt: '2025-01-09T00:00:00.000Z', fuelPercent: 10 }),
+          checkin({ odometerKm: 150, checkedAt: '2025-01-10T00:00:00.000Z', fuelPercent: null }),
+        ],
+        services: [],
+      });
+      // unaffected by the stale 10% guess — pure calc figure, same as the
+      // "estimates remaining litres" style tests above.
+      expect(r.mileageUsed).toBeCloseTo(20, 6);
+      expect(r.remainingLitres).toBeCloseTo(7.5, 6);
+    });
   });
 });

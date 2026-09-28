@@ -3,6 +3,7 @@ import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 
+import { pickBackupFile } from '@/backup/backup';
 import type { VehicleType } from '@/calc';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
@@ -24,6 +25,7 @@ export default function OnboardingScreen() {
   const ready = useAppStore((s) => s.ready);
   const hasVehicles = useAppStore((s) => s.vehicles.length > 0);
   const addVehicle = useAppStore((s) => s.addVehicle);
+  const restoreFromBackup = useAppStore((s) => s.restoreFromBackup);
 
   const [name, setName] = useState('');
   const [type, setType] = useState<VehicleType>('bike');
@@ -31,6 +33,7 @@ export default function OnboardingScreen() {
   const [reserve, setReserve] = useState('');
   const [saving, setSaving] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // If a vehicle already exists (e.g. added elsewhere), don't block here.
   if (ready && hasVehicles) return <Redirect href="/" />;
@@ -57,6 +60,24 @@ export default function OnboardingScreen() {
     } catch (e) {
       setSaving(false);
       Alert.alert('Could not create vehicle', String(e));
+    }
+  };
+
+  const importBackup = async () => {
+    setImporting(true);
+    try {
+      const picked = await pickBackupFile();
+      if (picked.status === 'canceled') return;
+      if (picked.status === 'invalid') {
+        Alert.alert('Not a MileTrack backup', 'That file isn’t a MileTrack backup (.json).');
+        return;
+      }
+      await restoreFromBackup(picked.backup);
+      router.replace('/');
+    } catch (e) {
+      Alert.alert('Could not import backup', String(e));
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -110,11 +131,20 @@ export default function OnboardingScreen() {
       />
 
       <Button label="Create vehicle" onPress={create} loading={saving} disabled={!canSave} />
+      <Button
+        label="Import backup file"
+        variant="ghost"
+        icon="tray-arrow-down"
+        onPress={importBackup}
+        loading={importing}
+        style={styles.importButton}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  importButton: { marginTop: spacing.sm },
   hero: { gap: spacing.sm, marginBottom: spacing.md, marginTop: spacing.xl },
   logo: {
     width: 56,

@@ -4,7 +4,13 @@ import { forwardRef, useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import type { FuelEntry } from '@/calc';
-import { lifetimeMileage, sinceLastServiceMileage } from '@/calc';
+import {
+  lifetimeMileage,
+  nearestOdometerNeighbors,
+  odometerOrderViolation,
+  sinceLastServiceMileage,
+  type OdometerPoint,
+} from '@/calc';
 import { Button } from '@/components/ui/Button';
 import { DateTimeField } from '@/components/ui/DateTimeField';
 import { TextField } from '@/components/ui/Field';
@@ -13,7 +19,7 @@ import { ToggleRow } from '@/components/ui/ToggleRow';
 import { useAppStore, useSelectedVehicle } from '@/store/appStore';
 import { useVehicleStats } from '@/hooks/useVehicleStats';
 import { colors, radius, spacing } from '@/theme/theme';
-import { fmtKm, fmtLitres } from '@/utils/format';
+import { fmtDate, fmtKm, fmtLitres } from '@/utils/format';
 import { isNonNegative, isPositive, parseNum } from '@/utils/num';
 import { FormSheet } from './FormSheet';
 
@@ -34,8 +40,9 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
   const removeFuelEntry = useAppStore((s) => s.removeFuelEntry);
   const lastFullTank = useAppStore((s) => s.lastFullTank);
   const fuelEntries = useAppStore((s) => s.fuelEntries);
+  const checkins = useAppStore((s) => s.checkins);
   const services = useAppStore((s) => s.services);
-  const { lastKnownOdometer, lastKnownOdometerAt } = useVehicleStats();
+  const { lastKnownOdometer } = useVehicleStats();
   const selectedVehicle = useSelectedVehicle();
   const tankCapacity = selectedVehicle?.tankCapacityLitres ?? null;
 
@@ -57,7 +64,7 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
     setTouched(false);
     setSubmitting(false);
     if (target) {
-      setOdometer(String(target.odometerKm));
+      setOdometer(target.odometerKm != null ? String(target.odometerKm) : '');
       setLitres(target.litresFilled != null ? String(target.litresFilled) : '');
       setFilledAt(target.filledAt);
       setIsFull(target.isFullTank);
@@ -87,34 +94,52 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
 
   const odo = parseNum(odometer);
   const lit = parseNum(litres);
-  // The very first fuel entry may legitimately be logged at 0 km.
-  const isFirstEntry =
-    (target ? fuelEntries.filter((e) => e.id !== target.id) : fuelEntries).length === 0;
-  const odoValid = isFirstEntry ? isNonNegative(odo) : isPositive(odo);
-  // The odometer only ever goes up. A new fill dated at/after the latest reading
-  // can't have a lower odometer — that's a typo, or a job for editing History.
-  const goesBackwards =
-    !editing &&
-    lastKnownOdometer != null &&
-    odo != null &&
-    odo < lastKnownOdometer &&
-    (lastKnownOdometerAt == null ||
-      Date.parse(filledAt) >= Date.parse(lastKnownOdometerAt));
+  // Odometer is optional-but-recommended: an entry can be saved without one
+  // (it just won't contribute to mileage), but if the user typed something it
+  // has to be a real, chronologically-consistent reading.
+  const odoProvided = odometer.trim() !== '';
+  const odoValid = !odoProvided || isNonNegative(odo);
+
+  // The odometer only ever goes up. Check the candidate reading against BOTH
+  // chronological neighbors (not just "the latest reading") so this also
+  // catches a backdated entry that would land below an earlier reading or
+  // above a later one — not only the common "now" case.
+  const neighborPoints: OdometerPoint[] = [
+    ...fuelEntries
+      .filter((e) => e.id !== target?.id && e.odometerKm != null)
+      .map((e) => ({ at: e.filledAt, odometerKm: e.odometerKm! })),
+    ...checkins.map((c) => ({ at: c.checkedAt, odometerKm: c.odometerKm })),
+    ...services
+      .filter((s) => s.odometerKm != null)
+      .map((s) => ({ at: s.servicedAt, odometerKm: s.odometerKm! })),
+  ];
+  const neighbors = nearestOdometerNeighbors(neighborPoints, filledAt);
+  const orderViolation =
+    odoProvided && odo != null ? odometerOrderViolation(odo, neighbors) : null;
+
   const litresRequired = missed !== 'approx';
   const litValid = litresRequired ? isPositive(lit) : true;
   // Can't put more fuel in than the tank holds — the litres or the configured
   // tank capacity is wrong.
   const overCapacity = tankCapacity != null && lit != null && lit > tankCapacity;
-  const canSubmit = odoValid && litValid && !goesBackwards && !overCapacity;
+  const canSubmit = odoValid && !orderViolation && litValid && !overCapacity;
 
-  // Heuristic: does this interval imply an implausibly high mileage?
-  const prevOdo = lastPrevOdometer(fuelEntries, target?.id);
+  // Heuristic: does the interval this fill closes (previous entry -> this one)
+  // imply an implausibly high mileage? Mileage attributes an interval's litres
+  // to the EARLIER fill (the fuel that was actually in the tank for that
+  // stretch), so this checks the previous entry's litres, not what's being
+  // typed for this fill right now.
+  const prevEntry = lastPrevEntry(fuelEntries, target?.id);
   const recentAvg =
     sinceLastServiceMileage(fuelEntries, services).kmPerLitre ??
     lifetimeMileage(fuelEntries).kmPerLitre;
   const impliedMileage =
-    prevOdo != null && odo != null && odoValid && isPositive(lit) && odo > prevOdo
-      ? (odo - prevOdo) / lit
+    prevEntry?.odometerKm != null &&
+    odo != null &&
+    odoValid &&
+    odo > prevEntry.odometerKm &&
+    (prevEntry.litresFilled != null ? isPositive(prevEntry.litresFilled) : isPositive(lit))
+      ? (odo - prevEntry.odometerKm) / (prevEntry.litresFilled ?? lit ?? 1)
       : null;
   const missedFillLikely =
     !editing &&
@@ -134,12 +159,12 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
 
   const submit = async () => {
     setTouched(true);
-    if (!canSubmit || odo == null) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     const approx = missed === 'approx';
     const hasLitres = isPositive(lit);
     const payload = {
-      odometerKm: odo,
+      odometerKm: odoProvided ? odo : null,
       litresFilled: approx ? (hasLitres ? lit : null) : lit,
       isFullTank: approx ? false : isFull,
       isApproximate: approx && hasLitres,
@@ -174,6 +199,10 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
     ]);
   };
 
+  const useLastOdometer = () => {
+    if (lastKnownOdometer != null) setOdometer(String(lastKnownOdometer));
+  };
+
   return (
     <FormSheet
       ref={ref}
@@ -189,9 +218,23 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
         ) : undefined
       }
     >
+      {!editing && lastKnownOdometer != null ? (
+        <Pressable onPress={useLastOdometer} style={styles.currentOdo}>
+          <MaterialCommunityIcons name="speedometer" size={18} color={colors.textSecondary} />
+          <Text variant="small" color={colors.textSecondary} style={styles.currentOdoText}>
+            Current odometer:{' '}
+            <Text variant="small" style={styles.currentOdoValue}>
+              {fmtKm(lastKnownOdometer)} km
+            </Text>
+          </Text>
+          <Text variant="small" color={colors.green}>
+            Use this
+          </Text>
+        </Pressable>
+      ) : null}
+
       <TextField
-        label="Odometer (km)"
-        required
+        label="Odometer (km, optional but recommended)"
         inputComponent={BottomSheetTextInput}
         keyboardType="numeric"
         value={odometer}
@@ -200,11 +243,17 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
         error={
           touched && !odoValid
             ? 'Enter a valid odometer reading'
-            : goesBackwards
-              ? `Odometer is already at ${fmtKm(lastKnownOdometer)} km. To fix an earlier reading, edit it in History.`
-              : null
+            : touched && orderViolation === 'below-earlier' && neighbors.prev
+              ? `Can't be lower than ${fmtKm(neighbors.prev.odometerKm)} km, logged on ${fmtDate(neighbors.prev.at)}.`
+              : touched && orderViolation === 'above-later' && neighbors.next
+                ? `Can't be higher than ${fmtKm(neighbors.next.odometerKm)} km, logged on ${fmtDate(neighbors.next.at)}.`
+                : null
         }
-        hint={lastKnownOdometer != null ? `Last: ${fmtKm(lastKnownOdometer)} km` : undefined}
+        hint={
+          !odoProvided
+            ? "Skipping this means this fill won't count toward mileage."
+            : undefined
+        }
       />
 
       <TextField
@@ -295,6 +344,19 @@ export const AddFuelSheet = forwardRef<BottomSheetModal, Props>(function AddFuel
 
 const styles = StyleSheet.create({
   deemph: { opacity: 0.9 },
+  currentOdo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceInput,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  currentOdoText: { flex: 1 },
+  currentOdoValue: { fontWeight: '700' },
   notice: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -314,11 +376,10 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Previous odometer (chronologically) among fuel entries, excluding `skipId`. */
-function lastPrevOdometer(entries: readonly FuelEntry[], skipId?: number): number | null {
+/** Previous fuel entry (chronologically) among fuel entries, excluding `skipId`. */
+function lastPrevEntry(entries: readonly FuelEntry[], skipId?: number): FuelEntry | null {
   const sorted = [...entries]
     .filter((e) => e.id !== skipId)
     .sort((a, b) => Date.parse(a.filledAt) - Date.parse(b.filledAt));
-  const last = sorted[sorted.length - 1];
-  return last ? last.odometerKm : null;
+  return sorted[sorted.length - 1] ?? null;
 }

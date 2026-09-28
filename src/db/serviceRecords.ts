@@ -39,6 +39,15 @@ export async function listServiceRecords(vehicleId: number): Promise<ServiceReco
   return rows.map(mapRow);
 }
 
+/** Every service record across every vehicle, for full-data backup/export. */
+export async function listAllServiceRecords(): Promise<ServiceRecord[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<ServiceRow>(
+    'SELECT * FROM service_records ORDER BY vehicle_id ASC, serviced_at ASC, id ASC;',
+  );
+  return rows.map(mapRow);
+}
+
 export async function createServiceRecord(input: ServiceInput): Promise<number> {
   const db = await getDb();
   const res = await db.runAsync(

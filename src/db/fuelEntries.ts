@@ -5,7 +5,7 @@ import { boolToInt, getDb, intToBool, nowIso } from './client';
 interface FuelRow {
   id: number;
   vehicle_id: number;
-  odometer_km: number;
+  odometer_km: number | null;
   litres_filled: number | null;
   is_full_tank: number;
   is_approximate: number;
@@ -32,7 +32,7 @@ const mapRow = (r: FuelRow): FuelEntry => ({
 
 export interface FuelEntryInput {
   vehicleId: number;
-  odometerKm: number;
+  odometerKm: number | null;
   litresFilled: number | null;
   isFullTank: boolean;
   isApproximate: boolean;
@@ -47,6 +47,15 @@ export async function listFuelEntries(vehicleId: number): Promise<FuelEntry[]> {
   const rows = await db.getAllAsync<FuelRow>(
     'SELECT * FROM fuel_entries WHERE vehicle_id = ? ORDER BY filled_at ASC, created_at ASC, id ASC;',
     [vehicleId],
+  );
+  return rows.map(mapRow);
+}
+
+/** Every fuel entry across every vehicle, for full-data backup/export. */
+export async function listAllFuelEntries(): Promise<FuelEntry[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<FuelRow>(
+    'SELECT * FROM fuel_entries ORDER BY vehicle_id ASC, filled_at ASC, id ASC;',
   );
   return rows.map(mapRow);
 }

@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { readAutoBackup, restoreBackup, writeAutoBackup, type BackupFile } from '@/backup/backup';
 import type { FuelEntry, OdometerCheckin, ServiceRecord, Vehicle } from '@/calc';
 import {
   createCheckin,
@@ -56,6 +57,7 @@ interface AppState extends Persisted {
   reloadVehicles: () => Promise<void>;
   reloadEntries: () => Promise<void>;
   selectVehicle: (id: number) => Promise<void>;
+  restoreFromBackup: (backup: BackupFile) => Promise<void>;
 
   addVehicle: (input: VehicleInput) => Promise<number>;
   editVehicle: (id: number, input: VehicleInput) => Promise<void>;
@@ -102,7 +104,20 @@ export const useAppStore = create<AppState>()(
           // ignore — fall back to defaults
         }
         await getDb(); // opens + migrates
-        const vehicles = await listVehicles();
+        let vehicles = await listVehicles();
+        if (vehicles.length === 0) {
+          // Fresh database — restore from an on-device backup if one is there
+          // (survives app updates / OS data restores, not a plain uninstall).
+          const backup = await readAutoBackup();
+          if (backup) {
+            try {
+              await restoreBackup(backup);
+              vehicles = await listVehicles();
+            } catch {
+              // ignore — fall back to onboarding
+            }
+          }
+        }
         let selectedVehicleId = get().selectedVehicleId;
         if (!selectedVehicleId || !vehicles.some((v) => v.id === selectedVehicleId)) {
           selectedVehicleId = vehicles[0]?.id ?? null;
@@ -139,21 +154,31 @@ export const useAppStore = create<AppState>()(
         await get().reloadEntries();
       },
 
+      restoreFromBackup: async (backup) => {
+        await restoreBackup(backup);
+        set({ selectedVehicleId: null, ...emptyEntries() });
+        await get().reloadVehicles();
+        await get().reloadEntries();
+      },
+
       addVehicle: async (input) => {
         const id = await createVehicle(input);
         await get().reloadVehicles();
         if (get().vehicles.length === 1) await get().selectVehicle(id);
+        void writeAutoBackup();
         return id;
       },
       editVehicle: async (id, input) => {
         await updateVehicle(id, input);
         await get().reloadVehicles();
+        void writeAutoBackup();
       },
       removeVehicle: async (id) => {
         await deleteVehicle(id);
         const wasSelected = get().selectedVehicleId === id;
         await get().reloadVehicles();
         if (wasSelected) await get().reloadEntries();
+        void writeAutoBackup();
       },
 
       addFuelEntry: async (input) => {
@@ -161,45 +186,54 @@ export const useAppStore = create<AppState>()(
         await createFuelEntry({ ...input, vehicleId });
         set({ lastFullTank: input.isFullTank });
         await get().reloadEntries();
+        void writeAutoBackup();
       },
       editFuelEntry: async (id, input) => {
         const vehicleId = requireVehicle(get);
         await updateFuelEntry(id, { ...input, vehicleId });
         await get().reloadEntries();
+        void writeAutoBackup();
       },
       removeFuelEntry: async (id) => {
         await deleteFuelEntry(id);
         await get().reloadEntries();
+        void writeAutoBackup();
       },
 
       addCheckin: async (input) => {
         const vehicleId = requireVehicle(get);
         await createCheckin({ ...input, vehicleId });
         await get().reloadEntries();
+        void writeAutoBackup();
       },
       editCheckin: async (id, input) => {
         const vehicleId = requireVehicle(get);
         await updateCheckin(id, { ...input, vehicleId });
         await get().reloadEntries();
+        void writeAutoBackup();
       },
       removeCheckin: async (id) => {
         await deleteCheckin(id);
         await get().reloadEntries();
+        void writeAutoBackup();
       },
 
       addService: async (input) => {
         const vehicleId = requireVehicle(get);
         await createServiceRecord({ ...input, vehicleId });
         await get().reloadEntries();
+        void writeAutoBackup();
       },
       editService: async (id, input) => {
         const vehicleId = requireVehicle(get);
         await updateServiceRecord(id, { ...input, vehicleId });
         await get().reloadEntries();
+        void writeAutoBackup();
       },
       removeService: async (id) => {
         await deleteServiceRecord(id);
         await get().reloadEntries();
+        void writeAutoBackup();
       },
 
       setLastFullTank: (v) => set({ lastFullTank: v }),

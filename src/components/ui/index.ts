@@ -4,6 +4,7 @@ export { Card } from './Card';
 export { Chip } from './Chip';
 export { DateTimeField } from './DateTimeField';
 export { Field, TextField } from './Field';
+export { FuelLevelSlider } from './FuelLevelSlider';
 export { Screen } from './Screen';
 export { SectionHeader } from './SectionHeader';
 export { StatCard } from './StatCard';

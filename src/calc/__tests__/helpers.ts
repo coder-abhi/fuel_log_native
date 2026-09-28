@@ -45,6 +45,7 @@ export function checkin(over: Partial<OdometerCheckin> = {}): OdometerCheckin {
     checkedAt: '2025-01-01T00:00:00.000Z',
     createdAt: '2025-01-01T00:00:00.000Z',
     notes: null,
+    fuelPercent: null,
     ...over,
   };
 }

@@ -51,14 +51,16 @@ export function buildOdometerTimeline(
   odometerCheckins: readonly OdometerCheckin[],
 ): OdometerReading[] {
   const readings: OdometerReading[] = [
-    ...fuelEntries.map(
-      (f): OdometerReading => ({
-        odometerKm: f.odometerKm,
-        at: f.filledAt,
-        source: 'fuel',
-        sourceId: f.id,
-      }),
-    ),
+    ...fuelEntries
+      .filter((f): f is FuelEntry & { odometerKm: number } => f.odometerKm != null)
+      .map(
+        (f): OdometerReading => ({
+          odometerKm: f.odometerKm,
+          at: f.filledAt,
+          source: 'fuel',
+          sourceId: f.id,
+        }),
+      ),
     ...odometerCheckins.map(
       (c): OdometerReading => ({
         odometerKm: c.odometerKm,

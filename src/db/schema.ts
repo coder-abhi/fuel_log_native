@@ -76,4 +76,32 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE vehicles ADD COLUMN type TEXT NOT NULL DEFAULT 'bike';
   `,
+
+  // v4 — fuel entry odometer becomes optional (recommended, not required);
+  // odometer check-ins gain an optional approximate tank-fill percentage.
+  `
+  CREATE TABLE fuel_entries_new (
+    id INTEGER PRIMARY KEY NOT NULL,
+    vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+    odometer_km REAL,
+    litres_filled REAL,
+    is_full_tank INTEGER NOT NULL DEFAULT 0,
+    is_approximate INTEGER NOT NULL DEFAULT 0,
+    excluded_from_mileage INTEGER NOT NULL DEFAULT 0,
+    cost REAL,
+    filled_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    notes TEXT
+  );
+  INSERT INTO fuel_entries_new
+    (id, vehicle_id, odometer_km, litres_filled, is_full_tank, is_approximate,
+     excluded_from_mileage, cost, filled_at, created_at, notes)
+    SELECT id, vehicle_id, odometer_km, litres_filled, is_full_tank, is_approximate,
+           excluded_from_mileage, cost, filled_at, created_at, notes FROM fuel_entries;
+  DROP TABLE fuel_entries;
+  ALTER TABLE fuel_entries_new RENAME TO fuel_entries;
+  CREATE INDEX idx_fuel_vehicle_filled ON fuel_entries(vehicle_id, filled_at);
+
+  ALTER TABLE odometer_checkins ADD COLUMN fuel_percent REAL;
+  `,
 ];

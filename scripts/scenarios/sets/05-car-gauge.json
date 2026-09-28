@@ -1,0 +1,42 @@
+{
+  "name": "Car Gauge",
+  "description": "Odometer-only check-ins interleaved with fills, some with the approximate fuel-level slider tracked and some without.",
+  "vehicle": {
+    "type": "car",
+    "tankCapacityLitres": 45,
+    "reserveThresholdLitres": 5
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-05-01T08:00:00.000Z",
+      "odometerKm": 5000,
+      "litresFilled": 40,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-05-05T08:00:00.000Z",
+      "odometerKm": 5150,
+      "fuelPercent": 80
+    },
+    {
+      "type": "odometer",
+      "at": "2025-05-10T08:00:00.000Z",
+      "odometerKm": 5320
+    },
+    {
+      "type": "fuel",
+      "at": "2025-05-15T08:00:00.000Z",
+      "odometerKm": 5500,
+      "litresFilled": 38,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-05-18T08:00:00.000Z",
+      "odometerKm": 5560,
+      "fuelPercent": 55
+    }
+  ]
+}

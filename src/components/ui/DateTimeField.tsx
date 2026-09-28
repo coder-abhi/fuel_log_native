@@ -30,8 +30,7 @@ export function DateTimeField({
       value: base,
       mode: 'time',
       is24Hour: false,
-      onChange: (ev, t) => {
-        if (ev.type !== 'set' || !t) return;
+      onValueChange: (_event, t) => {
         const merged = new Date(base);
         merged.setHours(t.getHours(), t.getMinutes(), 0, 0);
         onChange(merged.toISOString());
@@ -43,8 +42,7 @@ export function DateTimeField({
     DateTimePickerAndroid.open({
       value: current,
       mode: 'date',
-      onChange: (ev, d) => {
-        if (ev.type !== 'set' || !d) return;
+      onValueChange: (_event, d) => {
         if (mode === 'date') {
           const merged = new Date(current);
           merged.setFullYear(d.getFullYear(), d.getMonth(), d.getDate());

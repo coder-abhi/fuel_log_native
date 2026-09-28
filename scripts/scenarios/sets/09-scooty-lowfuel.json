@@ -1,0 +1,30 @@
+{
+  "name": "Scooty LowFuel",
+  "description": "A small tank, driven down close to the reserve threshold — checks atOrBelowReserve flips to true.",
+  "vehicle": {
+    "type": "scooty",
+    "tankCapacityLitres": 12,
+    "reserveThresholdLitres": 2
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2025-10-01T08:00:00.000Z",
+      "odometerKm": 11000,
+      "litresFilled": 10,
+      "isFullTank": true
+    },
+    {
+      "type": "fuel",
+      "at": "2025-10-05T08:00:00.000Z",
+      "odometerKm": 11350,
+      "litresFilled": 10,
+      "isFullTank": true
+    },
+    {
+      "type": "odometer",
+      "at": "2025-10-09T08:00:00.000Z",
+      "odometerKm": 11700
+    }
+  ]
+}

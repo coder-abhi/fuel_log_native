@@ -1,7 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { pickBackupFile, shareBackupFile } from '@/backup/backup';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -14,6 +16,54 @@ export default function VehiclesScreen() {
   const vehicles = useAppStore((s) => s.vehicles);
   const selectedId = useAppStore((s) => s.selectedVehicleId);
   const selectVehicle = useAppStore((s) => s.selectVehicle);
+  const restoreFromBackup = useAppStore((s) => s.restoreFromBackup);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const applyBackup = async (backup: Parameters<typeof restoreFromBackup>[0]) => {
+    setImporting(true);
+    try {
+      await restoreFromBackup(backup);
+    } catch (e) {
+      Alert.alert('Could not import backup', String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const importBackup = async () => {
+    setImporting(true);
+    const picked = await pickBackupFile();
+    setImporting(false);
+    if (picked.status === 'canceled') return;
+    if (picked.status === 'invalid') {
+      Alert.alert('Not a MileTrack backup', 'That file isn’t a MileTrack backup (.json).');
+      return;
+    }
+    if (vehicles.length > 0) {
+      Alert.alert(
+        'Replace current data?',
+        'Importing this backup will permanently replace all vehicles and entries currently on this device.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Replace', style: 'destructive', onPress: () => applyBackup(picked.backup) },
+        ],
+      );
+    } else {
+      await applyBackup(picked.backup);
+    }
+  };
+
+  const exportBackup = async () => {
+    setExporting(true);
+    try {
+      await shareBackupFile();
+    } catch (e) {
+      Alert.alert('Could not export backup', String(e));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Screen bottomInset={spacing.xl}>
@@ -60,11 +110,32 @@ export default function VehiclesScreen() {
         icon="plus"
         onPress={() => router.push('/vehicle/new')}
       />
+
+      <View style={styles.backupRow}>
+        <Button
+          label="Export backup"
+          variant="ghost"
+          icon="tray-arrow-up"
+          loading={exporting}
+          onPress={exportBackup}
+          style={styles.backupButton}
+        />
+        <Button
+          label="Import backup"
+          variant="ghost"
+          icon="tray-arrow-down"
+          loading={importing}
+          onPress={importBackup}
+          style={styles.backupButton}
+        />
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  backupRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xl },
+  backupButton: { flex: 1 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

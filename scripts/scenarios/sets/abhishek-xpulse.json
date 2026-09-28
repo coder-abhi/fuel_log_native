@@ -1,0 +1,68 @@
+{
+  "name": "Abhishek - Xpulse",
+  "vehicle": {
+    "type": "bike",
+    "tankCapacityLitres": 13,
+    "reserveThresholdLitres": 2.6
+  },
+  "events": [
+    {
+      "type": "fuel",
+      "at": "2026-08-24T08:00:00.000Z",
+      "odometerKm": 0,
+      "litresFilled": 2,
+      "isFullTank": false,
+      "isApproximate": false,
+      "cost": null
+    },
+    {
+      "type": "fuel",
+      "at": "2026-08-24T08:00:00.000Z",
+      "odometerKm": 7,
+      "litresFilled": 8.97,
+      "isFullTank": false,
+      "isApproximate": false,
+      "cost": 1000
+    },
+    {
+      "type": "fuel",
+      "at": "2026-08-30T08:00:00.000Z",
+      "odometerKm": 242,
+      "litresFilled": 8.97,
+      "isFullTank": false,
+      "isApproximate": false,
+      "cost": null
+    },
+    {
+      "type": "fuel",
+      "at": "2026-09-09T08:00:00.000Z",
+      "odometerKm": 518,
+      "litresFilled": 9.04,
+      "isFullTank": true,
+      "isApproximate": false,
+      "cost": null
+    },
+    {
+      "type": "odometer",
+      "at": "2026-09-13T08:00:00.000Z",
+      "odometerKm": 860,
+      "fuelPercent": 10
+    },
+    {
+      "type": "service",
+      "at": "2026-09-09T08:00:00.000Z",
+      "odometerKm": null,
+      "notes": null,
+      "cost": null
+    },
+    {
+      "type": "fuel",
+      "at": "2026-09-13T08:00:00.000Z",
+      "odometerKm": 864,
+      "litresFilled": 9.52,
+      "isFullTank": true,
+      "isApproximate": false,
+      "cost": null
+    }
+  ]
+}

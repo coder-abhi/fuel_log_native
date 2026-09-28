@@ -12,7 +12,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { Text } from '@/components/ui/Text';
 import { useVehicleStats } from '@/hooks/useVehicleStats';
 import { colors, spacing } from '@/theme/theme';
-import { fmtKm, fmtMileage } from '@/utils/format';
+import { fmtKm, fmtLitres, fmtMileage } from '@/utils/format';
 
 type Tab = 'overview' | 'trends' | 'pattern';
 
@@ -51,6 +51,14 @@ export default function StatsScreen() {
               label="Lifetime mileage"
               value={fmtMileage(stats.lifetime.kmPerLitre)}
               unit="km/l"
+            />
+          </View>
+          <View style={styles.row}>
+            <StatCard
+              label="Fuel filled"
+              value={stats.totalLitresFilled > 0 ? fmtLitres(stats.totalLitresFilled, 1) : '—'}
+              unit="L"
+              hint="Logged to date"
             />
           </View>
           <Card>
